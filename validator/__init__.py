@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 
 import pyrender
@@ -12,7 +13,7 @@ from PIL import Image
 from neurons import protocol
 
 
-def score_response(synapse: protocol.Task404) -> float:
+def score_response(synapse: protocol.TextTo3D) -> float:
     return 0.0
 
 
@@ -145,7 +146,6 @@ def _render_obj(file_name: str, views=4):
 def _run_validation(prompt: str, images: list[Any], device: torch.device) -> Any:
     with torch.no_grad():
         model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
-
         text = clip.tokenize([prompt]).to(device)
         query_features = model.encode_text(text)
 
@@ -153,7 +153,9 @@ def _run_validation(prompt: str, images: list[Any], device: torch.device) -> Any
         for img in images:
             img = Image.fromarray(img)
             image_features = model.encode_image(preprocess(img).unsqueeze(0).to(device))
-            dist = torch.nn.functional.cosine_similarity(query_features, image_features, dim=1)
+            dist = torch.nn.functional.cosine_similarity(
+                query_features, image_features, dim=1
+            )
             dist_norm = dist.detach().cpu().numpy()
             dists.append(dist_norm)
 
