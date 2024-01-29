@@ -1,7 +1,7 @@
 import typing
 
+import bittensor as bt
 import torch
-from time import perf_counter
 
 from shap_e.diffusion.sample import sample_latents
 from shap_e.models.download import load_model, load_config
@@ -12,18 +12,19 @@ from shap_e.util.notebooks import decode_latent_mesh
 from neurons import protocol
 
 
-
-
-async def forward(synapse: protocol.Task404, device: torch.device) -> protocol.Task404:
+async def forward(
+    synapse: protocol.Task404, device: torch.device, cache_dir: str
+) -> protocol.Task404:
+    text_to_3d(synapse.prompt, device, cache_dir)
     return synapse
 
 
 def create_model(
-        device: torch.device,
+    device: torch.device, cache_dir: str
 ) -> tuple[Transmitter, torch.nn.Module, GaussianDiffusion]:
-    cache_dir = f"shap_e_model_cache"  # TODO: set the cache dir
-    xm = load_model("transmitter", device=device, cache_dir=cache_dir)
-    model = load_model("text300M", device=device, cache_dir=cache_dir)
+    model_cache_dir = f"{cache_dir}/shap_e_model_cache"
+    xm = load_model("transmitter", device=device, cache_dir=model_cache_dir)
+    model = load_model("text300M", device=device, cache_dir=model_cache_dir)
     config = load_config("diffusion")
     diffusion = diffusion_from_config(config)
     return (
@@ -33,13 +34,10 @@ def create_model(
     )
 
 
-def text_to_3d(device: torch.device, prompt: str, ply_output="test.ply"):
-    xm, model, diffusion = create_model(device)
+def text_to_3d(prompt: str, device: torch.device, cache_dir: str):
+    xm, model, diffusion = create_model(device, cache_dir)
 
     batch_size = 1
-
-    start = perf_counter()
-    print("starting")
 
     latents = sample_latents(
         batch_size=batch_size,
@@ -57,14 +55,10 @@ def text_to_3d(device: torch.device, prompt: str, ply_output="test.ply"):
         s_churn=0,
     )
 
-    inter = perf_counter()
-    print(f"latents: {inter-start:0.4f}")
+    output = f"{cache_dir}/output.ply"
 
     for i, latent in enumerate(latents):
         t = decode_latent_mesh(xm, latent).tri_mesh()
         t.verts = t.verts[:, [0, 2, 1]]
-        with open(ply_output, 'wb') as f:
+        with open(output, "wb") as f:
             t.write_ply(f)
-
-    end = perf_counter()
-    print(f"saved: {end - inter:0.4f}")
