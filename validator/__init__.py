@@ -2,9 +2,12 @@ import logging
 from typing import Any
 
 import pyrender
+import clip
+import torch
 import trimesh
 import numpy as np
 from pyrender import RenderFlags
+from PIL import Image
 
 from neurons import protocol
 
@@ -137,3 +140,22 @@ def _render_obj(file_name: str, views=4):
 
         frame += 1
     return images
+
+
+def _run_validation(prompt: str, images: list[Any], device: torch.device) -> Any:
+    with torch.no_grad():
+        model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
+
+        text = clip.tokenize([prompt]).to(device)
+        query_features = model.encode_text(text)
+
+        dists = []
+        for img in images:
+            img = Image.fromarray(img)
+            image_features = model.encode_image(preprocess(img).unsqueeze(0).to(device))
+            dist = torch.nn.functional.cosine_similarity(query_features, image_features, dim=1)
+            dist_norm = dist.detach().cpu().numpy()
+            dists.append(dist_norm)
+
+        dists = np.asarray(dists)
+    return dists.mean()
