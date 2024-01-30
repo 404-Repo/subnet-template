@@ -36,6 +36,7 @@ class Validator(BaseValidatorNeuron):
             axons=[self.metagraph.axons[uid] for uid in miner_uids],
             synapse=TextTo3D(prompt_in=prompt),
             deserialize=False,
+            timeout=30,
         )
 
         bt.logging.info(
