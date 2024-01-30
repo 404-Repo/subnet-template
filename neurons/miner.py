@@ -18,6 +18,7 @@ class Miner(BaseMinerNeuron):
         self.models = load_models(config.neuron.device, config.neuron.full_path)
 
     async def forward(self, synapse: protocol.TextTo3D) -> protocol.TextTo3D:
+        bt.logging.debug(f"Text-to-3D task received: {synapse.prompt_in}")
         forward(synapse, self.models)
         return synapse
 
