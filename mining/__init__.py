@@ -1,7 +1,9 @@
 import io
 import typing
 import torch
+from traceback import print_exception
 
+import bittensor as bt
 from shap_e.diffusion.sample import sample_latents
 from shap_e.models.download import load_model, load_config
 from shap_e.diffusion.gaussian_diffusion import diffusion_from_config, GaussianDiffusion
@@ -43,7 +45,11 @@ def forward(synapse: protocol.TextTo3D, models: TextTo3DModels) -> protocol.Text
     Returns:
         The updated task, after the text to 3D conversion process.
     """
-    synapse.mesh_out = text_to_3d(synapse.prompt_in, models)
+    try:
+        synapse.mesh_out = text_to_3d(synapse.prompt_in, models)
+    except Exception as e:
+        bt.logging.exception(f"Error during mining: {e}")
+        bt.logging.debug(print_exception(type(e), e, e.__traceback__))
     return synapse
 
 

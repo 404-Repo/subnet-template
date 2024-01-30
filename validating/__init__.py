@@ -1,7 +1,8 @@
 import io
-import logging
+from traceback import print_exception
 from typing import Any, Callable
 
+import bittensor as bt
 import PIL
 import pyrender
 import clip
@@ -43,23 +44,29 @@ def score_responses(
     device: torch.device,
     models: Validate3DModels,
 ) -> torch.Tensor:
-    prompt_features = _get_prompt_features(prompt, device, models)
     scores = np.zeros(len(synapses), dtype=float)
     renderer = Renderer()
-    for i, synapse in enumerate(synapses):
-        if synapse.mesh_out is None:
-            continue
 
-        images = _render_images(synapse.mesh_out, renderer)
-        scores[i] = _score_images(images, device, models, prompt_features)
+    try:
+        prompt_features = _get_prompt_features(prompt, device, models)
+        for i, synapse in enumerate(synapses):
+            if synapse.mesh_out is None:
+                continue
 
-        # import matplotlib.pyplot as plt
-        #
-        # for x in range(4):
-        #     plt.imshow(images[x])
-        #     plt.savefig(f'image{x}.png')
+            images = _render_images(synapse.mesh_out, renderer)
+            scores[i] = _score_images(images, device, models, prompt_features)
 
-    renderer.r.delete()  # It's important to free the resources
+            # import matplotlib.pyplot as plt
+            #
+            # for x in range(4):
+            #     plt.imshow(images[x])
+            #     plt.savefig(f'image{x}.png')
+    except Exception as e:
+        bt.logging.exception(f"Error during scroring: {e}")
+        bt.logging.debug(print_exception(type(e), e, e.__traceback__))
+    finally:
+        renderer.r.delete()  # It's important to free the resources
+
     return torch.tensor(scores, dtype=torch.float32)
 
 
