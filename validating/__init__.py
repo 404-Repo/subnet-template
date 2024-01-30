@@ -1,3 +1,4 @@
+import base64
 import io
 from traceback import print_exception
 from typing import Any, Callable
@@ -53,7 +54,9 @@ def score_responses(
             if synapse.mesh_out is None:
                 continue
 
-            images = _render_images(synapse.mesh_out, renderer)
+            mesh = base64.b32decode(synapse.mesh_out)
+
+            images = _render_images(mesh, renderer)
             scores[i] = _score_images(images, device, models, prompt_features)
 
             # import matplotlib.pyplot as plt

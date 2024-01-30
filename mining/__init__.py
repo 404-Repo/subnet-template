@@ -1,3 +1,4 @@
+import base64
 import io
 import typing
 import torch
@@ -46,7 +47,7 @@ def forward(synapse: protocol.TextTo3D, models: TextTo3DModels) -> protocol.Text
         The updated task, after the text to 3D conversion process.
     """
     try:
-        synapse.mesh_out = text_to_3d(synapse.prompt_in, models)
+        synapse.mesh_out = base64.b32encode(text_to_3d(synapse.prompt_in, models))
     except Exception as e:
         bt.logging.exception(f"Error during mining: {e}")
         bt.logging.debug(print_exception(type(e), e, e.__traceback__))

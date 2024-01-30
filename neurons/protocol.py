@@ -1,11 +1,11 @@
-import typing
+from __future__ import annotations
 
 import bittensor as bt
 
 
 class TextTo3D(bt.Synapse):
     prompt_in: str = ""
-    mesh_out: bytes | None = None
+    mesh_out: str | None = None
 
-    def deserialize(self) -> bytes | None:
-        return self.mesh_out or None
+    def deserialize(self) -> TextTo3D:
+        return self
