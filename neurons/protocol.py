@@ -5,7 +5,7 @@ import bittensor as bt
 
 class TextTo3D(bt.Synapse):
     prompt_in: str = ""
-    mesh_out: str | None = None
+    mesh_out: bytes | None = None
 
     def deserialize(self) -> TextTo3D:
         return self

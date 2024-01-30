@@ -54,7 +54,7 @@ def score_responses(
             if synapse.mesh_out is None:
                 continue
 
-            mesh = base64.b32decode(synapse.mesh_out)
+            mesh = base64.b64decode(synapse.mesh_out)
 
             images = _render_images(mesh, renderer)
             scores[i] = _score_images(images, device, models, prompt_features)
