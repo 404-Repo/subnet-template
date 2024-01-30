@@ -9,7 +9,7 @@ with open("output.ply", "rb") as f:
 
 # _render_images(mesh)
 
-device = torch.device("cpu")
+device = torch.device("cuda:0")
 models = load_models(device, "cache")
 
 prompt = "A Golden Poison Dart Frog"
@@ -19,7 +19,7 @@ synapse = TextTo3D(
 )
 
 start = time.time()
-scores = score_responses(prompt, [synapse], device, models)
+scores = score_responses(prompt, [synapse, synapse], device, models)
 end = time.time()
 
 print(scores)

@@ -21,6 +21,22 @@ class Validate3DModels:
         self.preprocess = preprocess
 
 
+class Renderer:
+    def __init__(self):
+        self.r = pyrender.OffscreenRenderer(
+            viewport_width=512, viewport_height=512, point_size=1.0
+        )
+
+        w = 512
+        h = 512
+        f = 0.5 * w / np.tan(0.5 * 55 * np.pi / 180.0)
+        cx = 0.5 * w
+        cy = 0.5 * h
+        znear = 0.01
+        zfar = 100
+        self.pc = pyrender.IntrinsicsCamera(fx=f, fy=f, cx=cx, cy=cy, znear=znear, zfar=zfar)
+
+
 def score_responses(
     prompt: str,
     synapses: list[protocol.TextTo3D],
@@ -29,10 +45,12 @@ def score_responses(
 ) -> torch.Tensor:
     prompt_features = _get_prompt_features(prompt, device, models)
     scores = np.zeros(len(synapses), dtype=float)
+    renderer = Renderer()
     for i, synapse in enumerate(synapses):
         if synapse.mesh_out is None:
             continue
-        images = _render_images(synapse.mesh_out)
+
+        images = _render_images(synapse.mesh_out, renderer)
         scores[i] = _score_images(images, device, models, prompt_features)
 
         # import matplotlib.pyplot as plt
@@ -41,6 +59,7 @@ def score_responses(
         #     plt.imshow(images[x])
         #     plt.savefig(f'image{x}.png')
 
+    renderer.r.delete()  # It's important to free the resources
     return torch.tensor(scores, dtype=torch.float32)
 
 
@@ -81,42 +100,24 @@ def _score_images(
         return float(np.mean(dists))
 
 
-def _render_images(mesh_bytes: bytes, views=4) -> list[np.ndarray]:
-    fuze_trimesh = trimesh.load(io.BytesIO(mesh_bytes), file_type="ply")
-    _normalize(fuze_trimesh)
-    frame = 0
+def _render_images(mesh_bytes: bytes, renderer: Renderer, views=4) -> list[np.ndarray]:
+    mesh = trimesh.load(io.BytesIO(mesh_bytes), file_type="ply")
+    _normalize(mesh)
 
-    W = 512
-    H = 512
-    f = 0.5 * W / np.tan(0.5 * 55 * np.pi / 180.0)
-    cx = 0.5 * W
-    cy = 0.5 * H
-    znear = 0.01
-    zfar = 100
-    pc = pyrender.IntrinsicsCamera(fx=f, fy=f, cx=cx, cy=cy, znear=znear, zfar=zfar)
 
-    ci = np.eye(3)
-    ci[0, 0] = f
-    ci[1, 1] = f
-    ci[0, 2] = cx
-    ci[1, 2] = cy
-
-    step = 360 // views
-
-    r = pyrender.OffscreenRenderer(
-        viewport_width=512, viewport_height=512, point_size=1.0
-    )
     flags = RenderFlags.RGBA | RenderFlags.SHADOWS_DIRECTIONAL
 
     images = []
+    frame = 0
+    step = 360 // views
     for azimd in range(0, 360, step):
-        if isinstance(fuze_trimesh, trimesh.Trimesh):
+        if isinstance(mesh, trimesh.Trimesh):
             scene = trimesh.Scene()
-            scene.add_geometry(fuze_trimesh)
+            scene.add_geometry(mesh)
             scene = pyrender.Scene.from_trimesh_scene(scene)
         else:
             # trimeshScene = fuze_trimesh
-            scene = pyrender.Scene.from_trimesh_scene(fuze_trimesh)
+            scene = pyrender.Scene.from_trimesh_scene(mesh)
 
         camera_matrix = np.eye(4)
 
@@ -149,18 +150,17 @@ def _render_images(mesh_bytes: bytes, views=4) -> list[np.ndarray]:
 
         point_l = pyrender.PointLight(color=np.ones(3), intensity=3.0)
 
-        nc = pyrender.Node(camera=pc, matrix=camera_matrix)
+        nc = pyrender.Node(camera=renderer.pc, matrix=camera_matrix)
         scene.add_node(nc)
         ncl = pyrender.Node(light=point_l, matrix=camera_matrix)
         scene.add_node(ncl)
 
-        color, depth = r.render(scene, flags=flags)
+        color, depth = renderer.r.render(scene, flags=flags)
 
         images.append(color)
 
         frame += 1
 
-    r.delete()  # It's important to free the resources
     return images
 
 
