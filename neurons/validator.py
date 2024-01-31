@@ -70,7 +70,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(f"Dataset downloaded successfully")
 
         bt.logging.info(f"Loading the dataset")
-        dt = pandas.read_csv("dataset.csv", header=None, usecols=[1])
+        dt = pandas.read_csv(dataset_path, header=None, usecols=[1])
         return dt[1].to_list()
 
 
