@@ -36,7 +36,9 @@ class Renderer:
         cy = 0.5 * h
         znear = 0.01
         zfar = 100
-        self.pc = pyrender.IntrinsicsCamera(fx=f, fy=f, cx=cx, cy=cy, znear=znear, zfar=zfar)
+        self.pc = pyrender.IntrinsicsCamera(
+            fx=f, fy=f, cx=cx, cy=cy, znear=znear, zfar=zfar
+        )
 
 
 def score_responses(
@@ -98,7 +100,9 @@ def _score_images(
     with torch.no_grad():
         dists = []
         for img in images:
-            img_tensor = models.preprocess(PIL.Image.fromarray(img)).unsqueeze(0).to(device)
+            img_tensor = (
+                models.preprocess(PIL.Image.fromarray(img)).unsqueeze(0).to(device)
+            )
             image_features = models.model.encode_image(img_tensor)
             dist = torch.nn.functional.cosine_similarity(
                 prompt_features, image_features, dim=1
@@ -113,7 +117,6 @@ def _score_images(
 def _render_images(mesh_bytes: bytes, renderer: Renderer, views=4) -> list[np.ndarray]:
     mesh = trimesh.load(io.BytesIO(mesh_bytes), file_type="ply")
     _normalize(mesh)
-
 
     flags = RenderFlags.RGBA | RenderFlags.SHADOWS_DIRECTIONAL
 
@@ -188,4 +191,3 @@ def _normalize(tri_mesh: trimesh.base.Trimesh):
     vert_np = vert_np - half
     vert_np = vert_np * scale
     np.copyto(tri_mesh.vertices, vert_np)
-
